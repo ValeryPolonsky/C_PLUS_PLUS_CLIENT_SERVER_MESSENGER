@@ -1,0 +1,40 @@
+#ifndef USER_H_
+#define USER_H_
+#include "string.h"
+#include <strings.h>
+#include <string.h>
+#include <map>
+#include <vector>
+#include "MThread.h"
+#include "TCPSocket.h"
+#include <iostream>
+#include <fstream>
+#include "MyProtocol.h"
+#include "UDPSocket.h"
+#include "Room.h"
+#include "MultiThreadLocker.h"
+
+using namespace std;
+
+class User: public TCPSocket
+{
+	string name;
+	string session;
+	string chat_room;
+
+
+public:
+
+	User();
+	User(string userName, TCPSocket* p);
+	string getName();
+	void setSessionStatus();
+	void eraseSessionStatus();
+	void setRoom(string room);
+	string getRoom();
+	string getStatus();
+	virtual ~User();
+};
+
+
+#endif /* USER_H_ */

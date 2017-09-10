@@ -1,0 +1,291 @@
+//============================================================================
+// Name        : TCP Messenger Server
+// Author      : Eliav Menachi
+// Version     :
+// Copyright   :
+// Description : TCP Messenger application
+//============================================================================
+#include <strings.h>
+#include <map>
+#include "string.h"
+#include <vector>
+#include "MThread.h"
+#include "TCPSocket.h"
+#include "TCPMessengerProtocol.h"
+#include "MultipleTCPSocketsListener.h"
+#include "UdpMessenger.h"
+#include <sstream>
+#include <string>
+#include <stdlib.h>
+#include "MultiThreadLocker.h"
+using namespace std;
+
+
+class TCPMessengerClient : MThread
+{
+	string userName;
+	TCPSocket* client;
+	bool runningSession;
+	bool runningNormaly;
+	UDPMessenger* udpMessenger;
+	typedef map<string, string> NameToSocket;
+	NameToSocket nameToSocket;
+	sessionDetails statusDetails;
+	MultiThreadLocker* multiThreadLocker;
+
+public:
+
+	/*
+	 *Constructor - Initializes all clients's parameters
+	 */
+	TCPMessengerClient();
+
+	/*
+	 * Destructor - Deletes client
+	 */
+	~TCPMessengerClient();
+
+	/*
+	 * If the user is connected - do nothing
+	 * If the user is not connected - creates a new TCPSocket with given ip and port
+	 */
+	bool connect(string ip);
+
+	/*
+	 * If the client is connected - return true, else false
+	 */
+	bool isConnected();
+
+	/*
+	 * Disconnects from the server
+	 * If the client is connected and logged in - disconnection occurs
+	 */
+	bool disconnect();
+
+	/*
+	 * If the user is logged in - creates session between this users and user that got by name
+	 */
+	bool open(string userName);
+
+	/*
+	 * If the client has active session - returns true, else false
+	 */
+	bool isActiveClientSession();
+
+	/*
+	 * If the client is logged in - close active session with partner
+	 */
+	bool closeActiveSessionWithPeer();
+
+	/*
+	 * If the user logged in - sends message through udp messenger
+	 */
+	bool send(string msg);
+
+	/*
+	 * If the user is connected and not logged in - sends command and data to the server with registration request
+	 */
+	bool signup(string userToSignUp , string pass);
+
+	/*
+	 * If the user is connected to the server and not logged in - sends data and command to the server with log in request
+	 */
+	bool login(string userToLogin , string pass);
+
+	/*
+	 * Reads data from socket
+	 */
+	string readData(TCPSocket* sock);
+
+	/*
+	 * Sends data
+	 */
+	void sendData(TCPSocket* sock, string data);
+
+	/*
+	 * Sends command through socket
+	 */
+	void sendComand(TCPSocket* sock, int command);
+
+	/*
+	 * Reads command from socket
+	 */
+	int readComand(TCPSocket* sock);
+
+	/*
+	 * Prints user's list from server
+	 */
+	bool printListOfUsers();
+
+	/*
+	 * Returns user name
+	 */
+	string getUsername();
+
+	/*
+	 * Reads length of the message
+	 */
+	int readLength(TCPSocket* sock);
+
+	/*
+	 * Reads data from socket
+	 */
+	void readFromSocket(int length , TCPSocket * p );
+
+	/*
+	 * Requests to display connected users
+	 */
+	bool printConnectedUsers();
+
+	/*
+	 * Updates users list
+	 */
+	void updateUserList(map<string,string>m);
+
+	/*
+	 * Opens session with chat room
+	 */
+	void openSessionWithChatRoom(string chatRoom);
+
+	/*
+	 * Adds users to map
+	 */
+    void addUsersToUsersMap(TCPSocket * sock ,int length);
+
+    /*
+     * Extracts port from string
+     */
+	string splitFirst(string all);
+
+	/*
+	 * Extracts address from string
+	 */
+	string splitSecond(string all);
+
+	/*
+	 * Searches user name in user's map
+	 */
+	string searchByName(string name);
+
+	/*
+	 * Requests users in room from server
+	 */
+	void getUserFromRoom(string room);
+
+	/*
+	 * Creates a new chat room
+	 */
+	void createChatroom(string room_name);
+
+	/*
+	 * Checks if strings are equal
+	 */
+	bool checkErrorStatus(string str , string error);
+
+	/*
+	 * Exits from room
+	 */
+	bool exitFromRoom();
+
+	/*
+	 * Receives status from server
+	 */
+	void getStatus(string userName);
+
+	/*
+	 * Prints status of some user
+	 */
+	void printStatus(TCPSocket * sock);
+
+	/*
+	 * Closes specific room
+	 */
+    void closeRoom(string room_name);
+
+    /*
+     * Deletes all users in session
+     */
+    void deleteAllusersInSession();
+
+    /*
+     * Prints status of current client
+     */
+	void getMystatus();
+
+	/*
+	 * Requests rooms list
+	 */
+	void printRooms();
+
+	/*
+	 * Runs client thread with commands switch cases
+	 */
+	void run();
+
+	/*
+	 * Prints users map
+	 */
+	void printMap();
+	//case methods
+
+	/*
+	 * Deletes user from session
+	 */
+	void closeSessionWithPeerResponse();
+
+	/*
+	 * Deletes all users in session
+	 */
+	void eraseMsgResponse();
+
+	/*
+	 * Deletes all connected users in the room
+	 */
+	void closeRoomResponse();
+
+	/*
+	 * Deletes all users in the room and prints status
+	 */
+	void exitFromRoomResponse(TCPSocket *cSocket);
+
+	/*
+	 * Displays session connection response
+	 */
+	void joinSessionWithCrResponse(TCPSocket *cSocket);
+
+	/*
+	 * Displays chat room list from server
+	 */
+	void displayChatRoomsResponse(TCPSocket *cSocket);
+
+	/*
+	 * Creates a new chat room
+	 */
+	void openChatRoomResponse(TCPSocket *cSocket);
+
+	/*
+	 * Creates session with peer
+	 */
+	void createSessionWithPeerResponse(TCPSocket *cSocket);
+
+	/*
+	 * Reads connected users list from socket
+	 */
+	void displayConnUsersResponse(TCPSocket *cSocket);
+
+	/*
+	 * Reads users list from server
+	 */
+	void displayUsersListResponse(TCPSocket *cSocket);
+
+	/*
+	 * Reads registration response from server
+	 */
+	void signUpResponse(TCPSocket *cSocket);
+
+	/*
+	 * Reads log in response from server
+	 */
+	void logInResponse(TCPSocket *cSocket);
+};
+

@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="Rename resource &apos;SocketUtils/src/MyProtocol.h&apos; to &apos;TCPMessengerProtocol.h&apos;" description="Rename resource &apos;MyProtocol.h&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="src/MyProtocol.h" name="TCPMessengerProtocol.h" stamp="1464012232810" updateReferences="true"/>&#x0A;<refactoring comment="Rename resource &apos;SocketUtils/src&apos; to &apos;SharedLib&apos;" description="Rename resource &apos;src&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="src" name="SharedLib" stamp="1464246521934" updateReferences="true"/>
+</session>

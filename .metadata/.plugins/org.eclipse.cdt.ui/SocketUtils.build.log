@@ -1,0 +1,71 @@
+18:20:46 **** Build of configuration Debug for project SocketUtils ****
+make all 
+Building file: ../SharedLib/MThread.cpp
+Invoking: GCC C++ Compiler
+g++ -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"SharedLib/MThread.d" -MT"SharedLib/MThread.d" -o "SharedLib/MThread.o" "../SharedLib/MThread.cpp"
+Finished building: ../SharedLib/MThread.cpp
+ 
+Building file: ../SharedLib/MultiThreadLocker.cpp
+Invoking: GCC C++ Compiler
+g++ -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"SharedLib/MultiThreadLocker.d" -MT"SharedLib/MultiThreadLocker.d" -o "SharedLib/MultiThreadLocker.o" "../SharedLib/MultiThreadLocker.cpp"
+Finished building: ../SharedLib/MultiThreadLocker.cpp
+ 
+Building file: ../SharedLib/MultipleTCPSocketsListener.cpp
+Invoking: GCC C++ Compiler
+g++ -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"SharedLib/MultipleTCPSocketsListener.d" -MT"SharedLib/MultipleTCPSocketsListener.d" -o "SharedLib/MultipleTCPSocketsListener.o" "../SharedLib/MultipleTCPSocketsListener.cpp"
+Finished building: ../SharedLib/MultipleTCPSocketsListener.cpp
+ 
+Building file: ../SharedLib/TCPSocket.cpp
+Invoking: GCC C++ Compiler
+g++ -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"SharedLib/TCPSocket.d" -MT"SharedLib/TCPSocket.d" -o "SharedLib/TCPSocket.o" "../SharedLib/TCPSocket.cpp"
+Finished building: ../SharedLib/TCPSocket.cpp
+ 
+Building file: ../SharedLib/UDPSocket.cpp
+Invoking: GCC C++ Compiler
+g++ -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"SharedLib/UDPSocket.d" -MT"SharedLib/UDPSocket.d" -o "SharedLib/UDPSocket.o" "../SharedLib/UDPSocket.cpp"
+Finished building: ../SharedLib/UDPSocket.cpp
+ 
+Building file: ../MessengerServerLib/Dispatcher.cpp
+Invoking: GCC C++ Compiler
+g++ -I"/home/user/Desktop/Final_Project_14/SocketUtils/SharedLib" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"MessengerServerLib/Dispatcher.d" -MT"MessengerServerLib/Dispatcher.d" -o "MessengerServerLib/Dispatcher.o" "../MessengerServerLib/Dispatcher.cpp"
+Finished building: ../MessengerServerLib/Dispatcher.cpp
+ 
+Building file: ../MessengerServerLib/LoginAndRegister.cpp
+Invoking: GCC C++ Compiler
+g++ -I"/home/user/Desktop/Final_Project_14/SocketUtils/SharedLib" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"MessengerServerLib/LoginAndRegister.d" -MT"MessengerServerLib/LoginAndRegister.d" -o "MessengerServerLib/LoginAndRegister.o" "../MessengerServerLib/LoginAndRegister.cpp"
+Finished building: ../MessengerServerLib/LoginAndRegister.cpp
+ 
+Building file: ../MessengerServerLib/Room.cpp
+Invoking: GCC C++ Compiler
+g++ -I"/home/user/Desktop/Final_Project_14/SocketUtils/SharedLib" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"MessengerServerLib/Room.d" -MT"MessengerServerLib/Room.d" -o "MessengerServerLib/Room.o" "../MessengerServerLib/Room.cpp"
+Finished building: ../MessengerServerLib/Room.cpp
+ 
+Building file: ../MessengerServerLib/TCPMessengerServer.cpp
+Invoking: GCC C++ Compiler
+g++ -I"/home/user/Desktop/Final_Project_14/SocketUtils/SharedLib" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"MessengerServerLib/TCPMessengerServer.d" -MT"MessengerServerLib/TCPMessengerServer.d" -o "MessengerServerLib/TCPMessengerServer.o" "../MessengerServerLib/TCPMessengerServer.cpp"
+Finished building: ../MessengerServerLib/TCPMessengerServer.cpp
+ 
+Building file: ../MessengerServerLib/User.cpp
+Invoking: GCC C++ Compiler
+g++ -I"/home/user/Desktop/Final_Project_14/SocketUtils/SharedLib" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"MessengerServerLib/User.d" -MT"MessengerServerLib/User.d" -o "MessengerServerLib/User.o" "../MessengerServerLib/User.cpp"
+Finished building: ../MessengerServerLib/User.cpp
+ 
+Building file: ../MessengerClientLib/TCPMessengerClient.cpp
+Invoking: GCC C++ Compiler
+g++ -I"/home/user/Desktop/Final_Project_14/SocketUtils/SharedLib" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"MessengerClientLib/TCPMessengerClient.d" -MT"MessengerClientLib/TCPMessengerClient.d" -o "MessengerClientLib/TCPMessengerClient.o" "../MessengerClientLib/TCPMessengerClient.cpp"
+Finished building: ../MessengerClientLib/TCPMessengerClient.cpp
+ 
+Building file: ../MessengerClientLib/UdpMessenger.cpp
+Invoking: GCC C++ Compiler
+g++ -I"/home/user/Desktop/Final_Project_14/SocketUtils/SharedLib" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"MessengerClientLib/UdpMessenger.d" -MT"MessengerClientLib/UdpMessenger.d" -o "MessengerClientLib/UdpMessenger.o" "../MessengerClientLib/UdpMessenger.cpp"
+Finished building: ../MessengerClientLib/UdpMessenger.cpp
+ 
+Building target: libSocketUtils.a
+Invoking: GCC Archiver
+ar -r  "libSocketUtils.a"  ./SharedLib/MThread.o ./SharedLib/MultiThreadLocker.o ./SharedLib/MultipleTCPSocketsListener.o ./SharedLib/TCPSocket.o ./SharedLib/UDPSocket.o  ./MessengerServerLib/Dispatcher.o ./MessengerServerLib/LoginAndRegister.o ./MessengerServerLib/Room.o ./MessengerServerLib/TCPMessengerServer.o ./MessengerServerLib/User.o  ./MessengerClientLib/TCPMessengerClient.o ./MessengerClientLib/UdpMessenger.o   
+Finished building target: libSocketUtils.a
+ 
+ar: creating libSocketUtils.a
+
+18:20:51 Build Finished (took 4s.571ms)
+

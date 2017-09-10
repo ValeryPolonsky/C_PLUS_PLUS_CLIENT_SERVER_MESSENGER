@@ -1,0 +1,183 @@
+/*
+ * main.cpp
+ *
+ *  Created on: Feb 6, 2013
+ *      Author: Eliav Menachi
+ */
+
+#ifndef MAIN_CPP_
+#define MAIN_CPP_
+
+#include <iostream>
+#include <string.h>
+#include "TCPMessengerClient.h"
+
+using namespace std;
+
+void printHelpMenu();
+
+int main()
+{
+	printHelpMenu();
+	TCPMessengerClient * messenger = new TCPMessengerClient();
+	while(true)
+	{
+		string message = "";
+		string username = "";
+		string name = "";
+		string command = "";
+		string chatRoomName = "";
+		string ip = "";
+		string password = "";
+		cin >> command;
+		if(command == "c")
+		{
+			cin>>ip;
+			messenger->connect(ip);
+		}
+		else if(command == "o")
+		{
+			cin >> username;
+			messenger->open(username);
+		}
+		else if(command == "login")
+		{
+			cin >> username;
+			cin >> password;
+			messenger->login(username , password);
+		}
+		else if(command == "register")
+		{
+			cin >> username;
+			cin >> password;
+			messenger->signup(username, password);
+		}
+		else if(command=="lu")
+		{
+			messenger->printListOfUsers();
+		}
+		else if(command=="lcu")
+		{
+			messenger->printConnectedUsers();
+		}
+		else if(command=="lr")
+		{
+			messenger->printRooms();
+		}
+		else if(command=="lru")
+		{
+			cin>>chatRoomName;
+			messenger->getUserFromRoom(chatRoomName);
+		}
+		else if(command=="l")
+		{
+			messenger->getMystatus();
+		}
+		else if(command=="csr")
+		{
+			messenger->exitFromRoom();
+		}
+		else if(command=="lo")
+		{
+			cin >> username;
+			messenger->getStatus(username);
+		}
+		else if(command == "cnr")
+		{
+			cin>>chatRoomName;
+			messenger->createChatroom(chatRoomName);
+		}
+		else if(command == "s")
+		{
+			getline(std::cin ,message);
+			if(message.size()>0 && message[0] == ' ')
+				message.erase(0,1);
+			if (!messenger->isActiveClientSession())
+			{
+				cout<<"Fail: No client session is active"<<endl;
+			}
+			else
+			{
+				messenger->send(message);
+			}
+		}
+		else if(command == "cs")
+		{
+			if (!messenger->isActiveClientSession())
+			{
+				cout<<"Fail: No client session is active"<<endl;
+			}
+			else
+			{
+				messenger->closeActiveSessionWithPeer();
+			}
+		}
+		else if(command == "cr")
+		{
+			cin>>chatRoomName;
+			messenger->closeRoom(chatRoomName);
+		}
+		else if(command == "d")
+		{
+			messenger->disconnect();
+			delete messenger;
+			messenger = new TCPMessengerClient();
+		}
+		else if(command == "or")
+		{
+			cin>>chatRoomName;
+			messenger->openSessionWithChatRoom(chatRoomName);
+		}
+		else if(command == "p")
+		{
+			messenger->printMap();
+		}
+		else if(command == "h")
+		{
+			printHelpMenu();
+		}
+		else if(command == "x")
+		{
+			break;
+		}
+		else
+		{
+			cout << "Unknown command, use h command to display the help menu." << endl;
+		}
+	}
+	messenger->disconnect();
+	delete messenger;
+	cout<<"messenger was closed"<<endl;
+	return 0;
+}
+
+void printHelpMenu()
+{
+	//cout<<endl<<"Messenger Client Help Menu"<<endl;
+	//cout<<"***************************************************************************"<<endl;
+	//cout<<"******************************** Main Menu ********************************"<<endl;
+	cout<<"19) Connect to server with given ip        : x <ip address>                    "<<endl;
+	cout<<"19) Registrate a new user                  : registrate <user name> <password> "<<endl;
+	cout<<"19) Login                                  : login <user name> <password>      "<<endl;
+	cout<<"19) Create session with partner            : o <partner name>                  "<<endl;
+	cout<<"19) Display all registered users           : lu                                "<<endl;
+	cout<<"19) Display connected users                : lcu                               "<<endl;
+	cout<<"19) Create a new chat room                 : cnr                               "<<endl;
+	cout<<"19) To display all rooms                   : lr                                "<<endl;
+	cout<<"19) Display users in chat room             : lru                               "<<endl;
+	cout<<"19) Send message                           : s                                 "<<endl;
+	cout<<"19) Print the current status of the client : l                                 "<<endl;
+	//cout<<"12) Print the current status of the client : lo [user_name]                "<<endl;
+	cout<<"13) Close room 							  : cr [room name]                "<<endl;
+	cout<<"14) Connect to the chat room               : or [room name]                "<<endl;
+	cout<<"15) Close opened session                   : cs                            "<<endl;
+	cout<<"16) Close opened session with chat room    : csr                           "<<endl;
+	cout<<"17) Disconnect                             : d                             "<<endl;
+	cout<<"18) Print help menu                        : h                             "<<endl;
+	cout<<"19) Exit                                   : x                             "<<endl;
+	cout<<"***************************************************************************"<<endl;
+	cout<<"***************************************************************************"<<endl;
+}
+
+
+#endif /* MAIN_CPP_ */

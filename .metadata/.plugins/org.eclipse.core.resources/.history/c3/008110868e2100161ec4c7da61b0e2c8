@@ -1,0 +1,203 @@
+#ifndef MESSENGER_SERVER_H_
+#define MESSENGER_SERVER_H_
+
+#include "MessengerServer.h"
+#include "TCPMessengerProtocol.h"
+#include "LoginAndRegister.h"
+#include "User.h"
+
+
+/**
+ * Constructor - creates a new server socket
+ */
+MessengerServer::MessengerServer()
+{
+	multiThreadLocker = new MultiThreadLocker(1);
+	serverSocket = new TCPSocket(MSNGR_PORT);
+	runningNormally = true;
+	login = new LoginAndRegister();
+	this->start();
+}
+
+/*
+ * Returns login
+ */
+LoginAndRegister * MessengerServer::getLogin()
+{
+	return login;
+}
+
+/*
+ * Starts thread of messenger server
+ */
+void MessengerServer::run()
+{
+	while(runningNormally)
+	{
+		TCPSocket* newPeer = serverSocket->listenAndAccept();
+		cout << "New peer connected: " << newPeer->destIpAndPort() << endl;
+		// add peer to map in login class
+		login->addPeer(newPeer);
+	}
+}
+
+
+/*
+ * Sends command through socket
+ */
+void MessengerServer::sendComand(TCPSocket* sock, int command)
+{
+	command = htonl(command);
+	if(sock->send((char*)&command,4)<0)
+	{
+		perror("fail send command");
+	}
+}
+
+/*
+ * Sends length of the message through socket
+ */
+void MessengerServer::sendLength(TCPSocket* sock, int length)
+{
+
+	if(sock->send((char*)&length,4)<0)
+	{
+		perror("fail send command");
+	}
+}
+
+/*
+ * Closes server
+ */
+void MessengerServer::close()
+{
+	runningNormally = false;
+	delete login;
+	delete multiThreadLocker;
+	if (serverSocket->getSocketFid()<0)
+	{
+		serverSocket->cclose();
+	}
+	cout << "The messenger was closed" << endl;
+}
+
+/*
+ * Reads command from socket
+ */
+int MessengerServer::readComand(TCPSocket* sock)
+{
+	int command = 0;
+	if(sock->recv((char*)&command,4)<0)
+	{
+		perror("fail");
+	}
+	command = ntohl(command);
+	return command;
+}
+
+/*
+ * Sends data through socket
+ */
+void MessengerServer::sendData(TCPSocket* sock, string data)
+{
+	int add = htonl (data.length());
+
+	if (sock->send((char*)&add,4)<0)
+	{
+		perror("fail send data length");
+	}
+
+	if (sock->send(data.data(),data.length())<0)
+	{
+		perror("fail send data");
+	}
+}
+
+/*
+ * Returns ready socket
+ */
+TCPSocket* MessengerServer::MapToReadyConnected(map<string , TCPSocket *>* mapi)
+{
+	vector<TCPSocket*>* open_peers_vector = new vector<TCPSocket*>();
+	MultipleTCPSocketsListener* multi_socket = new MultipleTCPSocketsListener();
+	TCPSocket* peer1 = NULL;
+	bool running = true;
+	while(running)
+	{
+		map<string , TCPSocket *  >::iterator iter;
+		for(iter = mapi->begin();iter != mapi->end() ; iter++)
+		{
+			TCPSocket* move_to_vectorTCPsocket = (*iter).second;
+			open_peers_vector->push_back(move_to_vectorTCPsocket);
+		}
+		multi_socket->addSockets(*open_peers_vector);
+		peer1 = multi_socket->listenToSocket(2);
+		if(peer1 == NULL)
+		{
+			open_peers_vector->clear();
+			continue;
+		}
+		running = false;
+	}
+	return peer1;
+}
+
+/*
+ * Returns ready peer
+ */
+TCPSocket* MessengerServer::MapToReady(map<string , User > * mapi)
+{
+	vector<TCPSocket*> * open_peers_vector = new vector<TCPSocket*>();
+	MultipleTCPSocketsListener * multi_socket = new MultipleTCPSocketsListener();
+	TCPSocket* peer1 = NULL;
+	bool running = true;
+	while(running)
+	{
+		map<string ,User >::iterator iter;
+		for(iter = mapi->begin();iter != mapi->end() ; iter++)
+		{
+			open_peers_vector->push_back(&(iter->second));
+		}
+		multi_socket->addSockets(*open_peers_vector);
+		peer1 = multi_socket->listenToSocket(2);
+		if(peer1 == NULL)
+		{
+			open_peers_vector->clear();
+			continue;
+		}
+		running = false;
+	}
+	return peer1;
+}
+
+/*
+ * Reads data from socket
+ */
+string MessengerServer::readData(TCPSocket* sock)
+{
+	char buffer[100];
+	int len;
+	len = 0;
+	memset((void*)buffer,0,100);
+	sock->recv((char*)&len,4);
+	len = ntohl(len);
+	sock->recv(buffer, len);
+	string Data(buffer);
+	return Data;
+}
+
+/*
+ * Converts between map and vector
+ */
+vector<TCPSocket*>  MessengerServer::MapToVector(map<string,TCPSocket *> *mapi)
+{
+	vector<TCPSocket*> TcpsocketVec;
+	for(map <string, TCPSocket* >:: iterator it = mapi->begin(); it != mapi->end(); ++it)
+		TcpsocketVec.push_back(it->second);
+	return TcpsocketVec;
+}
+
+
+#endif
+
+

@@ -1,0 +1,677 @@
+#include "Dispatcher.h"
+#include "TCPMessengerServer.h"
+#include "UDPSocket.h"
+#include "User.h"
+
+/*
+ * Constructor - creates a new dispatcher with given users map
+ */
+Dispatcher::Dispatcher(map<string, TCPSocket*>* mapi , map<string , string > *loggedIn)
+{
+	multiThreadLocker = new MultiThreadLocker(1);
+	this->connected= mapi;
+	this->loggedIn= loggedIn;
+	runningNormally= true;
+	this->start();
+
+}
+
+/*
+ * Starts dispatcher thread
+ */
+void Dispatcher::run ()
+{
+	runningNormally = true;
+
+	while (runningNormally)
+	{
+		TCPSocket * readypeer = MessengerServer::MapToReady(&users);
+		int Command = MessengerServer::readComand(readypeer);
+		switch (Command)
+		{
+		case PRINT_USER_LIST:
+		{
+			printUserList(readypeer , Command);
+			break;
+		}
+		case PRINT_USER_CONNECTED:
+		{
+			userConnected(readypeer , Command);
+			break;
+		}
+		case OPEN_SESSION_WITH_PEER:
+		{
+			createSessionWithPeer(readypeer , Command);
+			break;
+		}
+		case CREATE_CHAT_ROOM:
+		{
+			openRoom(readypeer , Command);
+			break;
+		}
+		case PRINT_CHAT_ROOM:
+		{
+			displayAllRooms(readypeer , Command);
+			break;
+		}
+		case OPEN_SESSION_WITH_CHAT_ROOM:
+		{
+			joinRoom(readypeer , Command);
+			break;
+		}
+		case PRINT_USER_IN_ROOM:
+		{
+			printRoomsUsers(readypeer , Command);
+			break;
+		}
+		case GET_STATUS:
+		{
+			getStatus(readypeer , Command);
+			break;
+		}
+		case EXIT_FROM_ROOM:
+		{
+			exitFromRoom(readypeer , Command);
+			break;
+		}
+		case CLOSE_ROOM:
+		{
+			closeRoom(readypeer);
+			break;
+		}
+		case CLOSE_SESSION_WITH_PEER:
+		{
+			closeSessionWithPeer(readypeer);
+			break;
+		}
+		case DISCONECT:
+		{
+			disconnectFromServer(readypeer , Command);
+		}
+
+		}
+	}
+	cout << "Dispatcher listener is ended" << endl;
+}
+
+/*
+ * Prints users list
+ */
+void Dispatcher::printUserList(TCPSocket* readypeer, int Command)
+{
+	int length = LoginAndRegister::linesLength();
+	MessengerServer::sendComand(readypeer, Command);
+	MessengerServer::sendLength(readypeer, length);
+	LoginAndRegister::sendUsersFromFile(readypeer);
+}
+
+/*
+ * Prints status that user is connected
+ */
+void Dispatcher::userConnected(TCPSocket* readypeer , int Command)
+{
+	int length = this->objectlength();
+	MessengerServer::sendComand(readypeer , Command);
+	MessengerServer::sendLength(readypeer , length);
+	this->sendUsersFromMap(readypeer);
+}
+
+/*
+ * Finds user in users map and creates session with him if he's not busy or not connected
+ */
+void Dispatcher::createSessionWithPeer(TCPSocket * readypeer , int Command)
+{
+	string nameuser2 = MessengerServer::readData(readypeer);
+	if(UserSearch(nameuser2)==NULL)
+	{
+		MessengerServer::sendComand(readypeer , USER_NOT_FOUND);
+		return;
+	}
+	if(UserSearch(nameuser2)->getStatus().compare("IN")==0)
+	{
+		MessengerServer::sendComand(readypeer , USER_BUSY);
+		return;
+	}
+	this->sendErrorstatus(readypeer, this->UserSearch(nameuser2), Command);
+	string nameuser1 = this->searchByUser(readypeer);
+	User user = *this->UserSearch(nameuser2);
+	MessengerServer::sendComand(&user , Command);
+	MessengerServer::sendData(&user ,readypeer->destIpAndPort());
+	MessengerServer::sendData(&user ,nameuser1);
+	MessengerServer::sendComand(readypeer , Command);
+	MessengerServer::sendData(readypeer,user.destIpAndPort());
+	MessengerServer::sendData(readypeer , nameuser2);
+	multiThreadLocker->lock();
+	sessions.insert(pair<string , string>(nameuser1 , nameuser2));
+	multiThreadLocker->unlock();
+	this->UserSearch(nameuser1)->setSessionStatus();
+	this->UserSearch(nameuser2)->setSessionStatus();
+}
+
+/*
+ * Opens a new chat room
+ */
+void Dispatcher::openRoom(TCPSocket * readypeer , int Command)
+{
+	string room_name = MessengerServer::readData(readypeer);
+	if (isExistRoom(room_name)==true)
+	{
+		MessengerServer::sendComand(readypeer , ROOM_IS_EXIST);
+		return;
+	}
+	MessengerServer::sendComand(readypeer , Command);
+	string user_Name = this->SearchByIp(readypeer->destIpAndPort());
+	Room cr(room_name,user_Name,*this->UserSearch(user_Name));
+
+	multiThreadLocker->lock();
+	rooms.insert(pair<string ,Room>(room_name , cr));
+	multiThreadLocker->unlock();
+
+	MessengerServer::sendData(readypeer , "Chat room was created\n");
+	MessengerServer::sendData(readypeer , room_name);
+	this->UserSearch(user_Name)->setSessionStatus();
+	this->UserSearch(user_Name)->setRoom(room_name);
+}
+
+/*
+ * Displays all cretaed chat rooms
+ */
+void Dispatcher::displayAllRooms(TCPSocket * readypeer,int Command)
+{
+	int length = this->rooms_length();
+	MessengerServer::sendComand(readypeer , Command);
+	MessengerServer::sendLength(readypeer , length);
+	this->sendRoomsName(readypeer);
+}
+
+/*
+ * Joins the user to the chat room
+ */
+void Dispatcher::joinRoom(TCPSocket * readypeer,int Command)
+{
+	string roomName = MessengerServer::readData(readypeer);
+	string user_name =  this->searchByUser(readypeer);
+	User  user(user_name  , readypeer);
+	Room * cr;
+	if(this->FindByNameRoom(roomName)==NULL){
+		cout<<"error2"<<endl;
+		MessengerServer::sendComand(readypeer , SESSION_REFUSED);
+		return;
+	}else
+		cr = FindByNameRoom(roomName);
+	cr->setUser(user);
+	this->updateUsersAfterConnection( cr->getUserList() , Command , roomName);
+	this->UserSearch(user_name)->setSessionStatus();
+
+}
+
+/*
+ * Disconnects users from server
+ */
+void Dispatcher::disconnectFromServer(TCPSocket * readypeer , int Command)
+{
+	string user_name = MessengerServer::readData(readypeer);
+	multiThreadLocker->lock();
+	this->users.erase(user_name);
+	multiThreadLocker->unlock();
+	for (map <string, string>::iterator it1 = loggedIn->begin(); it1 != loggedIn->end(); it1++)
+    {
+		if(user_name.compare(it1->first)==0)
+		{
+			multiThreadLocker->lock();
+			this->loggedIn->erase(it1->first);
+			multiThreadLocker->unlock();
+		}
+    }
+
+	for (map <string , Room  >:: iterator it1 = rooms.begin(); it1 != rooms.end(); it1++)
+	{
+		if(it1->second.getOwner().compare(user_name)==0)
+		{
+			this->eraseSessionStatusfromAllUsersInRoom(this->FindByNameRoom(it1->first)->getUserList());
+			multiThreadLocker->lock();
+			this->rooms.erase(it1->first);
+			multiThreadLocker->unlock();
+		}
+	}
+	multiThreadLocker->lock();
+	this->connected->erase(readypeer->destIpAndPort());
+	multiThreadLocker->unlock();
+
+	cout<<"disconnected: "<<readypeer->destIpAndPort()<<endl;
+
+}
+
+/*
+ * Displays all users in chat room
+ */
+void Dispatcher::printRoomsUsers(TCPSocket * readypeer , int Command)
+{
+
+	string roomName = MessengerServer::readData(readypeer);
+	if(this->isExistRoom(roomName)==false){MessengerServer::sendComand(readypeer , ROOM_NOT_FOUND); return;}
+	MessengerServer::sendComand(readypeer , Command);
+	MessengerServer::sendLength(readypeer , this->FindByNameRoom(roomName)->getUserList().size());
+	this->sendUsersFromRoom(readypeer , this->FindByNameRoom(roomName)->getUserList());
+}
+
+/*
+ * Returns status of the user
+ */
+void Dispatcher::getStatus(TCPSocket* readypeer, int Command)
+{
+	string userName = MessengerServer::readData(readypeer);
+	if(UserSearch(userName) == NULL)
+	{
+		MessengerServer::sendComand(readypeer, USER_NOT_FOUND);
+		return;
+	}
+	MessengerServer::sendComand(readypeer, Command);
+	MessengerServer::sendData(readypeer, this->UserSearch(userName)->getStatus());
+	MessengerServer::sendData(readypeer, this->UserSearch(userName)->getRoom());
+}
+
+/*
+ * Disconnects the user from the specific room
+ */
+void Dispatcher::exitFromRoom(TCPSocket * readypeer , int Command)
+{
+	string roomName =  MessengerServer::readData(readypeer);
+	string user_Name = this->searchByUser(readypeer);
+	if(this->eraseFromRoom(user_Name , this->FindByNameRoom(roomName))==true)
+	{
+		int sizeBeforeUpdate=this->FindByNameRoom(roomName)->getUserList().size()-1;
+		if(this->FindByNameRoom(roomName)->getUserList().size()<0)
+		{
+			MessengerServer::sendComand(readypeer, Command);
+			MessengerServer::sendLength(readypeer, sizeBeforeUpdate);
+			MessengerServer::sendData(readypeer, "NONE");
+		}
+		else
+		{
+			this->updateUsersAfterConnection(this->FindByNameRoom(roomName)->getUserList(), Command, roomName);
+		}
+	}
+	else
+	{
+		MessengerServer::sendComand(readypeer, EXIT_FROM_ROOM_NOT_SUCCESS);
+	}
+}
+
+/*
+ * Closes session with peer
+ */
+void Dispatcher::closeSessionWithPeer(TCPSocket* readypeer)
+{
+	string user_name1 = MessengerServer::readData(readypeer);
+	this->UserSearch(user_name1)->eraseSessionStatus();
+	this->UserSearch(user_name1)->setRoom("NONE");
+
+	string user_name2 = this->searchByUser(readypeer);
+	this->UserSearch(user_name2)->eraseSessionStatus();
+	this->UserSearch(user_name2)->setRoom("NONE");
+
+	multiThreadLocker->lock();
+	sessions.erase((user_name1));
+	sessions.erase((user_name2));
+	multiThreadLocker->unlock();
+
+	MessengerServer::sendComand(readypeer, CLOSE_SESSION_WITH_PEER);
+	MessengerServer::sendComand(this->UserSearch(user_name1) , CLOSE_SESSION_WITH_PEER);
+
+}
+
+/*
+ * Closes a specific room
+ */
+void Dispatcher::closeRoom(TCPSocket * readypeer)
+{
+	string roomName = MessengerServer::readData(readypeer);
+	string owner = this->FindByNameRoom(roomName)->getOwner();
+	string userName = this->searchByUser(readypeer);
+	if(this->checkWhoIsOwner(owner , userName)==true)
+	{
+		this->eraseSessionStatusfromAllUsersInRoom(this->FindByNameRoom(roomName)->getUserList());
+		multiThreadLocker->lock();
+		rooms.erase(roomName);
+		multiThreadLocker->unlock();
+	}
+	else
+	{
+		MessengerServer::sendComand(readypeer , ERROR_OWNER);
+	}
+}
+
+
+/*
+ * Displays connected users
+ */
+void Dispatcher::printConnectedUsers()
+{
+	cout << "The users are:" << endl;
+ 	for (map<string, User>::iterator it1 = users.begin(); it1 != users.end(); it1++)
+	{
+		cout << it1->first << endl;
+	}
+}
+
+
+/*
+ * Displays all created rooms
+ */
+void Dispatcher::printAllRooms()
+{
+	cout << "The rooms are:" << endl;
+	for (map <string , Room  >:: iterator it1 = rooms.begin(); it1 != rooms.end(); it1++)
+	{
+		cout << it1->first << endl;
+	}
+}
+
+/*
+ * Prints all users that are connected to the room
+ */
+void Dispatcher::printAllUserInRoom(string room_name)
+{
+	cout << "The users are" << endl;
+	for (map <string, Room  >:: iterator it1 = rooms.begin(); it1 != rooms.end(); it1++)
+	{
+		if(it1->first.compare(room_name) == 0)
+		{
+			this->printVector(it1->second.getUserList());
+		}
+	}
+}
+
+/*
+ * Prints vector of users
+ */
+void Dispatcher::printVector(vector<User> vec)
+{
+	for (vector<User>::iterator it1 = vec.begin(); it1 != vec.end(); it1++)
+	{
+		cout<<it1->getName();
+	}
+}
+
+
+/*
+ * Prints all opened sessions
+ */
+void Dispatcher::printAllSessions()
+{
+	cout << "The session are" << endl;
+	for (map <string , string   >:: iterator it1 = sessions.begin(); it1 != sessions.end(); it1++)
+	{
+		cout << it1->first << " in session with " << it1->second << endl;
+	}
+}
+
+/*
+ * Deletes room session in all users in the room
+ */
+void Dispatcher::eraseSessionStatusfromAllUsersInRoom(vector<User > vec)
+{
+	for (vector<User>::iterator it1 = vec.begin(); it1 != vec.end(); it1++)
+	{
+		MessengerServer::sendComand(this->UserSearch(it1->getName()), CLOSE_ROOM);
+		UserSearch(it1->getName())->eraseSessionStatus();
+		UserSearch(it1->getName())->setRoom("NONE");
+	}
+}
+
+/*
+ * Checks if the user exists in the room
+ */
+bool Dispatcher::isExistRoom(string room_name)
+{
+	for(map <string, Room >:: iterator it = rooms.begin(); it != rooms.end(); it++)
+	{
+		if(it->first.compare(room_name) == 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+/*
+ * Checks if the given user is the owner
+ */
+bool Dispatcher::checkWhoIsOwner(string owner , string user)
+{
+	if(owner.compare(user)==0)
+	{
+		return true;
+	}
+	return false;
+}
+
+/*
+ * Deletes user from the room
+ */
+bool Dispatcher::eraseFromRoom(string user , Room * cr)
+{
+	if(cr->eraseUser(user)==true)
+	{
+		MessengerServer::sendComand(this->UserSearch(user) , ERASE_MSG);
+		this->UserSearch(user)->setRoom("NONE");
+		this->UserSearch(user)->eraseSessionStatus();
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+
+/*
+ * Sends users that are connected to room
+ */
+void Dispatcher::sendUsersFromRoom(TCPSocket * sock , vector<User > vec )
+{
+	for (vector <User >:: iterator it1 = vec.begin(); it1 != vec.end(); it1++)
+	{
+		MessengerServer::sendData(sock , it1->getName());
+	}
+}
+
+/*
+ * Sends error status
+ */
+bool Dispatcher::sendErrorstatus(TCPSocket* sock, User* user, int Command)
+{
+	if(user->getStatus().compare("IN") == 0)
+	{
+		MessengerServer::sendComand( sock , Command);
+		MessengerServer::sendData(sock,"IN");
+		return true;
+	}
+	return false;
+}
+
+/*
+ * Returns number of users that are connected to the room
+ */
+int  Dispatcher::rooms_length()
+{
+	int length=0;
+
+	for(map <string, Room >:: iterator it = rooms.begin(); it != rooms.end(); it++)
+	{
+		length++;
+	}
+	return length;
+}
+
+/*
+ * Returns number of users in the given vector
+ */
+int Dispatcher::getNumberOfUsers(vector<User>  vec)
+{
+	int NumofUsers = -1;
+	for (vector <User >:: iterator it = vec.begin(); it != vec.end(); it++)
+	{
+		NumofUsers++;
+	}
+	return NumofUsers;
+}
+
+/*
+ * Searches room by it's name in the rooms map
+ */
+Room* Dispatcher::FindByNameRoom(string roomName)
+{
+	for(map <string, Room >:: iterator it = rooms.begin(); it != rooms.end(); it++)
+	{
+		if(roomName.compare(it->first)==0)
+		{
+			return &it->second;
+		}
+	}
+	return NULL;
+}
+
+/*
+ * Sends room name through given socket
+ */
+void Dispatcher::sendRoomsName(TCPSocket * p)
+{
+	for(map <string, Room>::iterator it = rooms.begin(); it != rooms.end(); it++)
+	{
+		MessengerServer::sendData(p,it->first);
+	}
+}
+
+
+/*
+ * Adds user to the users map
+ */
+void Dispatcher::addUser(string name, TCPSocket* p)
+{
+	User user(name, p);
+	multiThreadLocker->lock();
+	this->users.insert(pair< string , User > (name , user));
+	multiThreadLocker->unlock();
+}
+
+
+/*
+ * Returns length of users map
+ */
+int Dispatcher::objectlength()
+{
+	int length=0;
+
+	for(map <string, User>::iterator it = users.begin(); it != users.end(); it++)
+	{
+		length++;
+	}
+	return length;
+}
+
+/*
+ * Sends users from the map
+ */
+void Dispatcher::sendUsersFromMap(TCPSocket * p)
+{
+	for(map <string, User >:: iterator it = users.begin(); it != users.end(); it++)
+	{
+		MessengerServer::sendData(p, it->first);
+	}
+}
+
+/*
+ * Sends error
+ */
+/*bool Dispatcher::sendErrorlengthForAllError(int length, vector<User> vec, int Command)
+{
+	for(unsigned int i = 0; i < vec.size(); i++)
+	{
+		MessengerServer::sendComand(this->UserSearch(vec[i].getName()), Command);
+		MessengerServer::sendLength(this->UserSearch(vec[i].getName()), length);
+	}
+
+	return true;
+}*/
+
+/*
+ * Updates users details after connection
+ */
+bool Dispatcher::updateUsersAfterConnection(vector<User> vec, int Command, string Data)
+{
+	for (vector<User>::iterator it1 = vec.begin(); it1 != vec.end(); it1++)
+	{
+		string userName= it1->getName();
+
+		MessengerServer::sendComand(this->UserSearch(userName),Command);
+		int length = vec.size()-1;
+		MessengerServer::sendLength(this->UserSearch(userName) , length );
+
+		for (vector <User >:: iterator it2 = vec.begin(); it2 != vec.end(); it2++)
+		{
+			if(userName.compare(it2->getName())!=0)
+			{
+				string user = it2->getName()+":"+it2->destIpAndPort();
+				MessengerServer::sendData(this->UserSearch(userName), user);
+			}
+		}
+		MessengerServer::sendData(this->UserSearch(userName),Data);
+	}
+	return true;
+}
+
+
+/*
+ * Searches user in users map by his name
+ */
+User* Dispatcher::UserSearch(string Name)
+{
+	for(map <string, User >:: iterator it = users.begin(); it != users.end(); it++)
+	{
+		if (Name.compare(it->first)==0)
+		{
+			return &it->second;
+		}
+	}
+	return NULL;
+}
+
+/*
+ * Searches user by his IP address
+ */
+string Dispatcher::SearchByIp(string Ip)
+{
+
+	for(map <string, User >:: iterator it = users.begin(); it != users.end(); it++)
+	{
+		if (Ip.compare(it->second.destIpAndPort())==0)
+		{
+			return it->first;
+		}
+	}
+	return NULL;
+}
+
+/*
+ * Searches user by socket in users map
+ */
+string Dispatcher::searchByUser(TCPSocket* user)
+{
+	for(map <string, User >:: iterator it = users.begin(); it != users.end(); it++)
+	{
+		if (user == &it->second)
+		{
+			return it->first;
+		}
+	}
+
+	return NULL;
+}
+
+/*
+ * Destructor
+ */
+Dispatcher::~Dispatcher() {
+}

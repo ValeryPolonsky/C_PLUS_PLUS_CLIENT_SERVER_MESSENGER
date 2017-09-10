@@ -1,0 +1,13 @@
+#include "TCPMessengerServer.h"
+
+#ifndef TESTMESSENGERSERVER_H_
+#define TESTMESSENGERSERVER_H_
+
+class TestMessengerServer {
+public:
+	TestMessengerServer();
+	virtual ~TestMessengerServer();
+	bool test();
+};
+
+#endif /* TESTMESSENGERSERVER_H_ */

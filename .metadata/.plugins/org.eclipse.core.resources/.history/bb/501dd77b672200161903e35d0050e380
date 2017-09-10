@@ -1,0 +1,48 @@
+#include "TestMessengerClient.h"
+#include "TestMessengerServer.h"
+#include <strings.h>
+#include <string.h>
+#include <map>
+#include <vector>
+#include "MThread.h"
+#include "TCPSocket.h"
+#include<iostream>
+#include<fstream>
+#include "TCPMessengerProtocol.h"
+#include "UDPSocket.h"
+#include "User.h"
+#include "Room.h"
+#include "MultiThreadLocker.h"
+
+using namespace std;
+int main(){
+//	if(command == "s")
+//			{
+//				getline(std::cin ,message);
+//				if(message.size()>0 && message[0] == ' ')
+//					message.erase(0,1);
+//				if (!messenger->isActiveClientSession())
+//				{
+//					cout<<"!!!There is no active session!!!"<<endl;
+//				}
+//				else
+//				{
+//					messenger->send(message);
+//				}
+//			}
+//	if(command == "o")
+//	{
+//		cin >> username;
+//		messenger->open(username);
+//	}
+	TestMessengerClient* client1=new TestMessengerClient();
+	if(!client1.test())
+		cout << "Test failed!!" << endl;
+	else
+		cout<<"Test succeded!!"<<endl;
+	return 0;
+}
+
+
+
+

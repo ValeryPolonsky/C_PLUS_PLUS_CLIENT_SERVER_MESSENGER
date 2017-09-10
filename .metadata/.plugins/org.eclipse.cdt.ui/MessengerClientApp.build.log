@@ -1,0 +1,15 @@
+18:19:08 **** Build of configuration Debug for project MessengerClientApp ****
+make all 
+Building file: ../src/main.cpp
+Invoking: GCC C++ Compiler
+g++ -I"/home/user/Desktop/Final_Project_14/SocketUtils/MessengerClientLib" -I"/home/user/Desktop/Final_Project_14/SocketUtils/MessengerServerLib" -I"/home/user/Desktop/Final_Project_14/SocketUtils/SharedLib" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"src/main.d" -MT"src/main.d" -o "src/main.o" "../src/main.cpp"
+Finished building: ../src/main.cpp
+ 
+Building target: MessengerClientApp
+Invoking: GCC C++ Linker
+g++ -L"/home/user/Desktop/Final_Project_14/SocketUtils/Debug" -o "MessengerClientApp"  ./src/main.o   -lpthread -lSocketUtils
+Finished building target: MessengerClientApp
+ 
+
+18:19:08 Build Finished (took 653ms)
+

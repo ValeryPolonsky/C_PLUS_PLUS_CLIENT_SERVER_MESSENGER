@@ -1,0 +1,71 @@
+#ifndef USER_H_
+#define USER_H_
+#include "string.h"
+#include <strings.h>
+#include <string.h>
+#include <map>
+#include <vector>
+#include "MThread.h"
+#include "TCPSocket.h"
+#include <iostream>
+#include <fstream>
+#include "TCPMessengerProtocol.h"
+#include "UDPSocket.h"
+#include "Room.h"
+#include "MultiThreadLocker.h"
+
+using namespace std;
+
+class User: public TCPSocket
+{
+	string name;
+	string session;
+	string chat_room;
+
+
+public:
+
+
+	/*
+	 * Constructor - creates a new user
+     */
+	User(string userName, TCPSocket* p);
+
+	/*
+	 * Returns user's name
+	 */
+	string getName();
+
+	/*
+	 * Sets session status of the room
+	 */
+	void setSessionStatus();
+
+	/*
+	 * Sets user's status to - out of session
+	 */
+	void eraseSessionStatus();
+
+	/*
+	 * Sets a given room to the chat room status
+	 */
+	void setRoom(string room);
+
+	/*
+	 * Returns status of the chat room
+	 */
+	string getRoom();
+
+	/*
+	 * Returns session status of the user
+	 */
+	string getStatus();
+
+	/*
+	 * Deletes user
+	 */
+	virtual ~User();
+};
+
+
+#endif /* USER_H_ */

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;Test/users.txt&apos; to &apos;users_and_passwords.txt&apos;" description="Rename resource &apos;users.txt&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="users.txt" name="users_and_passwords.txt" stamp="1464429011616" updateReferences="true"/>
+</session>

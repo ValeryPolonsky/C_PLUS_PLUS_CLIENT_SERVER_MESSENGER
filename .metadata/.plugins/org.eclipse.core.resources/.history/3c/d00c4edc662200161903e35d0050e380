@@ -1,0 +1,29 @@
+#include "TestMessengerClient.h"
+#include "TestMessengerServer.h"
+
+int main(){
+//	if(command == "s")
+//			{
+//				getline(std::cin ,message);
+//				if(message.size()>0 && message[0] == ' ')
+//					message.erase(0,1);
+//				if (!messenger->isActiveClientSession())
+//				{
+//					cout<<"!!!There is no active session!!!"<<endl;
+//				}
+//				else
+//				{
+//					messenger->send(message);
+//				}
+//			}
+//	if(command == "o")
+//	{
+//		cin >> username;
+//		messenger->open(username);
+//	}
+	return 0;
+}
+
+
+
+

@@ -1,0 +1,35 @@
+#ifndef CHATROOM_H_
+#define CHATROOM_H_
+
+#include <strings.h>
+#include <string.h>
+#include <map>
+#include <vector>
+#include "MThread.h"
+#include "TCPSocket.h"
+#include <iostream>
+#include <fstream>
+#include "TCPMessengerProtocol.h"
+#include "User.h"
+#include "MultiThreadLocker.h"
+
+using namespace std;
+class  User;
+class Room {
+	string name;
+	string owner;
+	MultiThreadLocker* multiThreadLocker;
+    vector<User  > users;
+
+public:
+	Room();
+	Room(string name , string owner , User  user);
+	void setUser(User  User);
+	string getOwner();
+	bool eraseUser(string user_name);
+	vector<User> getUserList();
+	virtual ~Room();
+};
+
+
+#endif

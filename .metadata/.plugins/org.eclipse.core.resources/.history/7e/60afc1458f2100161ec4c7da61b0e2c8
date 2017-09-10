@@ -1,0 +1,76 @@
+/*
+ * MyProtocol.h
+ *
+ *  Created on: May 22, 2016
+ *      Author: user
+ */
+
+#ifndef MYPROTOCOL_H_
+#define MYPROTOCOL_H_
+
+/*
+ * LoginProtocol.h
+ *
+ *  Created on: Feb 13, 2013
+ *      Author: efi
+ */
+#include "strings.h"
+#include "string.h"
+#include <string>
+#define MSNGR_PORT 3346
+
+#define LOGIN_ERASE                 0
+#define CLOSE_SESSION_WITH_PEER 	1
+#define OPEN_SESSION_WITH_PEER 		2
+#define EXIT						3
+#define SEND_MSG_TO_PEER			4
+#define SESSION_REFUSED				5
+#define SESSION_ESTABLISHED			6
+#define LOG_IN						7
+#define SIGN_UP                     8
+#define REJECT                      9
+#define NOT_A				        10
+#define PRINT_USER_LIST             11
+#define PRINT_USER_CONNECTED        12
+#define CREATE_CHAT_ROOM			13
+#define CLOSE_CHAT_ROOM				14
+#define CREATE_CHATROOM             17
+#define PRINT_ROOMS                 18
+#define LOG_IN						7
+#define SIGN_UP                     8
+#define REJECT                      9
+#define NOT_A					    10
+#define PRINT_USER_LIST             11
+#define PRINT_USER_CONNECTED        12
+#define CREATE_CHAT_ROOM			13
+#define CLOSE_CHAT_ROOM				14
+#define PRINT_CHAT_ROOM             18
+#define OPEN_SESSION_WITH_CHAT_ROOM 19
+#define PRINT_USER_IN_ROOM          20
+#define GET_STATUS                  21
+#define EXIT_FROM_ROOM              22
+#define EXIT_FROM_ROOM_NOT_SUCCESS  23
+#define CLOSE_ROOM                  24
+#define ERROR_OWNER  				25
+#define ROOM_NOT_FOUND              26
+#define EXIT_FROM_ROOM_SUCCESS      27
+#define ERASE_MSG                   28
+#define USER_NOT_FOUND              29
+#define LOGIN_NOT_SUCCESS           31
+#define USER_BUSY					30
+#define DISCONECT                   32
+#define ROOM_IS_EXIST               33
+#define USER_IS_EXIST               34
+
+using namespace std;
+
+typedef struct {
+	 bool connected;
+	 bool loggedIn;
+	 string session;
+     string withUser;
+     string chatRoom;
+}sessionDetails;
+
+#endif /* MYPROTOCOL_H_ */
+

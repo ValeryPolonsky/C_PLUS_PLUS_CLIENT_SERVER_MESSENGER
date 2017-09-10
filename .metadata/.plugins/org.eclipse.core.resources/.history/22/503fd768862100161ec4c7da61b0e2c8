@@ -1,0 +1,79 @@
+#ifndef DISPATCHER_H_
+#define DISPATCHER_H_
+
+#include <strings.h>
+#include <string.h>
+#include <map>
+#include <vector>
+#include "MThread.h"
+#include "TCPSocket.h"
+#include<iostream>
+#include<fstream>
+#include "TCPMessengerProtocol.h"
+#include "UDPSocket.h"
+#include "User.h"
+#include "Room.h"
+#include "MultiThreadLocker.h"
+
+using namespace std;
+
+class Dispatcher : MThread
+{
+	bool runningNormally;
+	  typedef map <string , User > UsersMap;
+      UsersMap users;
+      typedef map <string , string > Sessions;
+      Sessions sessions;
+      typedef map<string ,Room > RoomsMap;
+      RoomsMap rooms;
+      typedef map<string , TCPSocket *> LoggedIn;
+      LoggedIn* connected;
+      MultiThreadLocker* multiThreadLocker;
+      map <string, string > *  loggedIn;
+
+public:
+	Dispatcher(map<string , TCPSocket *> * mapi , map <string , string > *logedin);
+	void sendUsersFromMap(TCPSocket * p);
+	int objectlength();
+	void printConnectedUsers();
+	void addUser(string name , TCPSocket * p);
+	User* UserSearch(string Name);
+	string searchByUser(TCPSocket* user);
+	TCPSocket* FindSocket(TCPSocket * P , string Address );
+	string AddressSearch(string Address);
+	string SearchByIp(string Ip);
+	Room* FindByNameRoom(string roomName);
+	void printAllUserInRoom(string room_name);
+	void printVector(vector<User> vec);
+	bool updateUsersAfterConnection(vector<User  > vec, int Command , string Data );
+	void sendRoomsName(TCPSocket * p);
+	int getNumberOfUsers(vector<User> vec);
+	int rooms_length();
+	bool sendErrorstatus(TCPSocket * sock , User * user  , int Command);
+	void sendUsersFromRoom(TCPSocket * sock , vector<User > vec);
+	bool eraseFromRoom(string user , Room * cr );
+	bool checkWhoIsOwner(string owner , string user);
+	void printAllRooms();
+	void closeSessionWithPeer(TCPSocket * readypeer );
+	bool sendErrorlengthForAllError(int length , vector<User> vec, int Command);
+	void erase(User * user);
+	bool isExistRoom(string room_name);
+    void eraseSessionStatusfromAllUsersInRoom(vector<User > vec);
+    void printAllSessions();
+    void closeRoom(TCPSocket * readypeer);
+    void createSessionWithPeer(TCPSocket * readypeer , int Command);
+    void printUserList(TCPSocket * readypeer , int Command);
+    void userConnected(TCPSocket * readypeer , int Command);
+    void getStatus(TCPSocket * readypeer , int Command);
+    void openRoom(TCPSocket * readypeer , int Command);
+    void joinRoom(TCPSocket * readypeer,int Command);
+    void displayAllRooms(TCPSocket * readypeer,int Command);
+    void printRoomsUsers(TCPSocket * readypeer , int Command);
+    void exitFromRoom(TCPSocket * readypeer , int Command);
+    void disconnectFromServer(TCPSocket * readypeer , int Command);
+	void run();
+	virtual ~Dispatcher();
+};
+
+
+#endif

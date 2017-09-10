@@ -1,0 +1,924 @@
+#include "TCPMessengerClient.h"
+
+
+/*
+ *Constructor - Initializes all clients's parameters
+ */
+TCPMessengerClient::TCPMessengerClient()
+{
+	multiThreadLocker = new MultiThreadLocker(1);
+	statusDetails.connected = false;
+	statusDetails.loggedIn = false;
+	statusDetails.session = "OUT";
+	statusDetails.withUser = "NONE";
+	statusDetails.chatRoom = "NONE";
+	udpMessenger = NULL;
+	runningSession = true;
+	runningNormaly = true;
+	client = NULL;
+}
+
+/*
+ * If the user is connected - do nothing
+ * If the user is not connected - creates a new TCPSocket with given ip and port
+ */
+bool TCPMessengerClient::connect(string ip)
+{
+	if(statusDetails.connected == false)
+	{
+		client = new TCPSocket(ip , MSNGR_PORT);
+		this->start();
+		statusDetails.connected = true;
+		return true;
+	}
+	else
+	{
+		cout<<"Client Notification: You are connected"<<endl;
+	}
+	return false;
+}
+
+
+/*
+ * If the user is connected to the server and not logged in - sends data and command to the server with log in request
+ */
+bool TCPMessengerClient::login(string userToLogin , string pass)
+{
+	if((statusDetails.connected == true))
+	{
+		if(statusDetails.loggedIn == false)
+		{
+			this->userName = userToLogin;
+			this->sendComand(client , LOG_IN);
+			this->sendData(client , userToLogin);
+			this->sendData(client , pass);
+			return true;
+		}
+		else
+		{
+			cout<<"Client Notification: You already logged in"<<endl;
+		}
+	}
+	else cout<<"Client Notification: You must first connect to server"<<endl;
+	return true;
+}
+
+/*
+ * If the user is connected and not logged in - sends command and data to the server with registration request
+ */
+bool TCPMessengerClient::signup(string userToSignUp , string pass)
+{
+	if(statusDetails.connected == true)
+	{
+		if(statusDetails.loggedIn == false)
+		{
+			this->sendComand(client , SIGN_UP);
+			this->sendData(client , userToSignUp);
+			this->sendData(client , pass);
+
+		}
+		else
+		{
+			cout<<"!!!You can't registrate user  while logged in!!!"<<endl;
+			return false;
+		}
+	}
+	else
+	{
+		cout<<"!!!You have to connect the server before registration!!!"<<endl;
+		return false;
+	}
+	return true;
+}
+
+/*
+ * Prints user's list from server
+ */
+bool TCPMessengerClient::printListOfUsers()
+{
+	if(statusDetails.loggedIn==true)
+	{
+		this->sendComand(client , PRINT_USER_LIST);
+		return true;
+	}
+	else
+	{
+		cout<<"Client Notification: you must first login"<<endl;
+		return false;
+	}
+}
+
+/*
+ * If the client is connected - return true, else false
+ */
+bool TCPMessengerClient::isConnected()
+{
+	if (client->getSocketFid()>0)
+		return true;
+	else
+		return false;
+}
+
+/*
+ * Disconnects from the server
+ * If the client is connected and logged in - disconnection occurs
+ */
+bool TCPMessengerClient::disconnect()
+{
+	if(statusDetails.connected==true)
+	{
+		if(statusDetails.loggedIn==true)
+		{
+			if(statusDetails.chatRoom.compare("NONE") != 0)
+			{
+				this->exitFromRoom();
+			}
+			if(statusDetails.withUser.compare("NONE") != 0)
+			{
+				this->closeActiveSessionWithPeer();
+			}
+			this->udpMessenger->close();
+		}
+		this->sendComand(client , DISCONECT);
+		this->sendData(client , userName);
+		statusDetails.loggedIn = false;
+		this->deleteAllusersInSession();
+		runningNormaly = false;
+		if(this->isConnected() == true)
+		{
+			client->cclose();
+		}
+		this->waitForThread();
+		cout<<"You have been disconnected from server"<<endl;
+		return true;
+	}
+	else
+	{
+		cout<<"!!!You don't have any connections!!!"<<endl;
+		return false;
+	}
+	return false;
+}
+
+/*
+ * If the user is logged in - creates session between this users and user that got by name
+ */
+bool TCPMessengerClient::open(string userName)
+{
+	if(statusDetails.loggedIn == true)
+	{
+		if(statusDetails.session.compare("OUT") == 0)
+		{
+			if(isActiveClientSession())
+			{
+				cout<<"!!!You have already an opened session!!!"<<endl;
+				return true;
+			}
+			else
+			{
+				if(userName.compare(this->userName) == 0)
+				{
+					cout<<"!!!You can't open a session with yourself, please try again!!!"<<endl;
+					return true;
+				}
+				else
+				{
+					this->sendComand(client , OPEN_SESSION_WITH_PEER);
+				}
+			this->sendData(client , userName);
+			return true;
+			}
+		}
+		else
+		{
+			cout<<"You are in a session already"<<endl;
+		}
+	}
+	else
+	{
+		cout<<"You must log in first"<<endl;
+		return false;
+	}
+	return true;
+}
+
+/*
+ * If the client has active session - returns true, else false
+ */
+bool TCPMessengerClient::isActiveClientSession()
+{
+	if (statusDetails.session.compare("IN")==0)
+		return true;
+	else
+		return false;
+
+}
+
+/*
+ * If the client is logged in - close active session with partner
+ */
+bool TCPMessengerClient::closeActiveSessionWithPeer()
+{
+	if(statusDetails.loggedIn == true)
+	{
+		if(isActiveClientSession() == true)
+		{
+			if(statusDetails.withUser.compare("NONE") != 0)
+			{
+				this->sendComand(client , CLOSE_SESSION_WITH_PEER);
+				this->sendData(client , statusDetails.withUser);
+			}
+			else cout<<"!!!You are not in chat room!!!"<<endl;
+		}
+		else
+			cout<<"!!!You are not in session!!!"<<endl;
+	}
+	else
+		cout<<"!!!You must log in!!!"<<endl;
+
+
+	return true;
+}
+
+/*
+ * If the user logged in - sends message through udp messenger
+ */
+bool TCPMessengerClient::send(string msg)
+{
+	if(statusDetails.loggedIn == true)
+	{
+		for(map<string, string>::iterator it = nameToSocket.begin(); it != nameToSocket.end(); it++)
+		{
+			string address = this->splitSecond(it->second);
+			int port  = atoi(this->splitFirst(it->second).c_str());
+			udpMessenger->sendTo(">[" + userName + "] " + msg , address , port);
+		}
+		return false;
+	}else
+	{
+		cout<<"!!!You must log in!!!"<<endl;
+	}
+	return true;
+}
+
+/*
+ * Runs client thread with commands switch cases
+ */
+void TCPMessengerClient::run()
+{
+	//cout<<"client listener started"<<endl;
+	string msg;
+	runningNormaly = true;
+	while (runningNormaly)
+	{
+		int Command = readComand(client);
+		switch (Command)
+		{
+			case LOG_IN:
+			{
+				logInResponse(client);
+				break;
+			}
+			case SIGN_UP:
+				signUpResponse(client);
+				break;
+			case PRINT_USER_LIST:
+			{
+				displayUsersListResponse(client);
+				break;
+			}
+			case PRINT_USER_CONNECTED:
+			{
+				displayConnUsersResponse(client);
+				break;
+			}
+			case OPEN_SESSION_WITH_PEER:
+			{
+				createSessionWithPeerResponse(client);
+				break;
+			}
+			case CREATE_CHAT_ROOM:
+			{
+				openChatRoomResponse(client);
+				break;
+			}
+			case PRINT_CHAT_ROOM:
+			{
+				displayChatRoomsResponse(client);
+				break;
+			}
+			case OPEN_SESSION_WITH_CHAT_ROOM:
+			{
+				joinSessionWithCrResponse(client);
+				break;
+			}
+			case ERASE_MSG:
+			{
+				eraseMsgResponse();
+				break;
+			}
+			case CLOSE_SESSION_WITH_PEER:
+			{
+				closeSessionWithPeerResponse();
+				break;
+			}
+			case PRINT_USER_IN_ROOM:
+			{
+				this->readFromSocket(this->readLength(client) , client );
+				break;
+			}
+			case GET_STATUS:
+			{
+				this->printStatus(client);
+				break;
+			}
+			case EXIT_FROM_ROOM:
+			{
+				exitFromRoomResponse(client);
+				break;
+
+			}
+			case CLOSE_ROOM:
+			{
+				closeRoomResponse();
+				break;
+			}
+			case SESSION_REFUSED:
+			{
+				cout<<"Session request refused"<<endl;
+				break;
+			}
+			case EXIT_FROM_ROOM_NOT_SUCCESS:
+			{
+				cout<<"Exit from room was not successful"<<endl;
+				break;
+			}
+			case ERROR_OWNER:
+			{
+				cout<<"You are not an owner of the room"<<endl;
+				break;
+			}
+			case ROOM_NOT_FOUND:
+			{
+				cout<<"Room doens't exist"<<endl;
+				break;
+			}
+			case USER_NOT_FOUND:
+			{
+				cout<<"User with this name wan't found"<<endl;
+				break;
+			}
+			case USER_BUSY:
+			{
+				cout<<"The user is busy"<<endl;
+				break;
+			}
+			case LOGIN_NOT_SUCCESS:
+			{
+				cout<<"Log in failed"<<endl;
+				break;
+			}
+			case ROOM_IS_EXIST:
+			{
+				cout<<"This room already exists"<<endl;
+				break;
+			}
+			case USER_IS_EXIST:
+			{
+				cout<<"You are already logged in"<<endl;
+			}
+		}
+	}
+	//cout<<"client listener ended"<<endl;
+}
+
+/*
+ * Creates a new chat room
+ */
+void TCPMessengerClient::openChatRoomResponse(TCPSocket *cSocket)
+{
+	cout<<this->readData(cSocket);
+	statusDetails.chatRoom = this->readData(cSocket);
+	statusDetails.session = "IN";
+	statusDetails.withUser = "NONE";
+}
+
+/*
+ * Creates session with peer
+ */
+void TCPMessengerClient::createSessionWithPeerResponse(TCPSocket *cSocket)
+{
+	string first = this->readData(cSocket);
+	string second = this->readData(cSocket);
+	nameToSocket.insert(pair<string, string >(second,first));
+	statusDetails.session = "IN";
+	statusDetails.withUser = second;
+	statusDetails.chatRoom = "NONE";
+	cout<<"You have opened session with: " + second << endl;
+}
+
+/*
+ * Reads connected users list from socket
+ */
+void TCPMessengerClient::displayConnUsersResponse(TCPSocket *cSocket)
+{
+	int length = this->readLength(cSocket);
+	this->readFromSocket(length , cSocket);
+}
+
+/*
+ * Reads users list from server
+ */
+void TCPMessengerClient::displayUsersListResponse(TCPSocket *cSocket)
+{
+	int length = this->readLength(cSocket);
+	this->readFromSocket(length , cSocket);
+}
+
+/*
+ * Reads registration response from server
+ */
+void TCPMessengerClient::signUpResponse(TCPSocket *cSocket)
+{
+	string msg =  this->readData(cSocket);
+	cout<<"Server's Message: "<<msg<<endl;
+}
+
+/*
+ * Reads log in response from server
+ */
+void TCPMessengerClient::logInResponse(TCPSocket *cSocket)
+{
+	string msg = this->readData(cSocket);
+	cout<<msg<<endl;
+	if(this->checkErrorStatus(msg , "false")==true)
+	{
+		cout<<"!!!You must log in!!!"<<endl;
+		return;
+	}
+
+	string add = this->readData(cSocket);
+	int port =  atoi(this->splitFirst(add).c_str());
+	udpMessenger = new UDPMessenger(port);
+	statusDetails.loggedIn = true;
+}
+
+/*
+ * Displays chat room list from server
+ */
+void TCPMessengerClient::displayChatRoomsResponse(TCPSocket *cSocket)
+{
+	int length = this->readLength(cSocket);
+	this->readFromSocket(length , cSocket);
+}
+
+/*
+ * Displays session connection response
+ */
+void TCPMessengerClient::joinSessionWithCrResponse(TCPSocket *cSocket)
+{
+	int length = this->readLength(cSocket);
+	this->addUsersToUsersMap(cSocket , length);
+	statusDetails.chatRoom = this->readData(cSocket);
+	statusDetails.withUser = "NONE";
+	statusDetails.session = "IN";
+	cout<<"Server Notification: The session with chat room success"<<endl;
+}
+
+/*
+ * Deletes all users in the room and prints status
+ */
+void TCPMessengerClient::exitFromRoomResponse(TCPSocket *cSocket)
+{
+
+	int length = this->readLength(cSocket);
+	if(length<0)
+	{
+		statusDetails.chatRoom = this->readData(cSocket);
+		statusDetails.session = "IN";
+		statusDetails.withUser = "NONE";
+		this->deleteAllusersInSession();
+		cout<<"User not in the room now"<<endl;
+		return;
+	}
+	else
+	{
+
+		//this->deleteAllusersInSession();
+		this->addUsersToUsersMap(cSocket , length);
+		statusDetails.chatRoom=this->readData(cSocket);
+		statusDetails.session="IN";
+		statusDetails.withUser="NONE";
+		cout<<"User not in the room now"<<endl;
+		return;
+	}
+}
+
+/*
+ * Deletes all connected users in the room
+ */
+void TCPMessengerClient::closeRoomResponse()
+{
+	this->deleteAllusersInSession();
+	statusDetails.chatRoom = "NONE";
+	statusDetails.session = "OUT";
+	statusDetails.withUser = "NONE";
+	cout << "The room is closed now" << endl;
+}
+
+/*
+ * Deletes all users in session
+ */
+void TCPMessengerClient::eraseMsgResponse()
+{
+	this->deleteAllusersInSession();
+	statusDetails.chatRoom = "NONE";
+	statusDetails.session = "OUT";
+	statusDetails.withUser = "NONE";
+	cout<<"!!!Your exit is successful!!!" << endl;
+}
+
+/*
+ * Deletes user from session
+ */
+void TCPMessengerClient::closeSessionWithPeerResponse()
+{
+	this->deleteAllusersInSession();
+	statusDetails.chatRoom = "NONE";
+	statusDetails.session = "OUT";
+	statusDetails.withUser = "NONE";
+	cout<<"!!!Session with remote peer has been closed!!!"<<endl;
+}
+
+/*
+ * Deletes all users in session
+ */
+void TCPMessengerClient::deleteAllusersInSession()
+{
+	for(map <string, string  >:: iterator it = nameToSocket.begin(); it != nameToSocket.end(); it++)
+		nameToSocket.erase(it->first);
+
+}
+
+/*
+ * Checks if strings are equal
+ */
+bool TCPMessengerClient::checkErrorStatus(string str , string error)
+{
+	if(str.compare(error) == 0)
+		return true;
+	else
+		return false;
+}
+
+/*
+ * Reads data from socket
+ */
+string TCPMessengerClient::readData(TCPSocket* sock)
+{
+	char buffer[100];
+	int len;
+	len = 0;
+	memset((void*)buffer,0,100);
+	sock->recv((char*)&len,4);
+	len = ntohl(len);
+	sock->recv(buffer, len);
+	string Data(buffer);
+	return Data;
+}
+
+/*
+ * Requests users in room from server
+ */
+void TCPMessengerClient::getUserFromRoom(string room)
+{
+	if(statusDetails.loggedIn==true)
+	{
+		this->sendComand(client , PRINT_USER_IN_ROOM );
+		this->sendData(client , room);
+	}
+	else
+		cout<<"!!!You must log in!!!"<<endl;
+}
+
+/*
+ * Adds users to map
+ */
+void TCPMessengerClient::addUsersToUsersMap(TCPSocket * sock , int length)
+{
+	for(int i = 0 ; i<length ; i++)
+	{
+		string all =  this->readData(sock);
+		string user  = this->splitSecond(all);
+		string dest = this->splitFirst(all);
+		multiThreadLocker->lock();
+		this->nameToSocket.insert(pair<string , string>(user, dest ));
+		multiThreadLocker->unlock();
+	}
+}
+
+/*
+ * Prints users map
+ */
+void TCPMessengerClient::printMap()
+{
+	for(map <string, string  >:: iterator it = nameToSocket.begin(); it != nameToSocket.end(); it++)
+	{
+		cout<<it->first<<endl;
+	}
+}
+
+/*
+ * Reads data from socket
+ */
+void TCPMessengerClient::readFromSocket(int length , TCPSocket * p)
+{
+	cout<<"The results are:"<<endl;
+	int i = 0;
+	for(i = 0 ; i < length ; i++)
+	{
+		string Index = this->readData(p);
+		cout<<Index<<endl;
+	}
+
+}
+
+/*
+ * Exits from room
+ */
+bool TCPMessengerClient::exitFromRoom()
+{
+	if(statusDetails.loggedIn==true)
+	{
+		if(statusDetails.session.compare("IN")==0)
+		{
+			if(statusDetails.chatRoom.compare("NONE")!=0)
+			{
+				this->sendComand(client, EXIT_FROM_ROOM);
+				this->sendData(client, statusDetails.chatRoom);
+				return true;
+			}
+			else
+			{
+				cout<<"You are not in a chat room"<<endl;
+			}
+		}
+		else
+		{
+			cout<<"You are not in a session"<<endl;
+		}
+	}
+	else
+	{
+		cout<<"You must log in"<<endl;
+	}
+	return false;
+}
+
+/*
+ * Opens session with chat room
+ */
+void TCPMessengerClient::openSessionWithChatRoom(string chatRoom)
+{
+	if(statusDetails.loggedIn)
+	{
+		if(this->isActiveClientSession() == true)
+		{
+			cout<<"You are already in a session"<<endl;
+			return;
+		}
+		this->sendComand(client,OPEN_SESSION_WITH_CHAT_ROOM);
+		this->sendData(client , chatRoom);
+	}
+	else
+	{
+		cout<<"You must log in"<<endl;
+	}
+}
+
+/*
+ * Sends command through socket
+ */
+void TCPMessengerClient::sendComand(TCPSocket* sock, int command)
+{
+	command = htonl(command);
+	sock->send((char*)&command,4);
+}
+
+/*
+ * Reads command from socket
+ */
+int TCPMessengerClient::readComand(TCPSocket* sock)
+{
+	int command = 0;
+	if(sock->recv((char*)&command,4)<0)
+	{
+		perror("failed to read command");
+	}
+	command = ntohl(command);
+	return command;
+}
+
+/*
+ * Closes specific room
+ */
+void TCPMessengerClient::closeRoom(string room_name)
+{
+	this->sendComand(client , CLOSE_ROOM);
+	this->sendData(client , room_name);
+}
+
+/*
+ * Reads length of the message
+ */
+int TCPMessengerClient::readLength(TCPSocket* sock)
+{
+	int length = 0;
+	if(sock->recv((char*)&length,4) < 0)
+	{
+		perror("fail to read length");
+	}
+
+	if (length == 0)
+	{
+		return 0;
+	}
+	return length;
+}
+
+/*
+ * Sends data
+ */
+void TCPMessengerClient::sendData(TCPSocket* sock, string data)
+{
+	int add = htonl (data.length());
+
+	if (sock->send((char*)&add, 4) < 0)
+	{
+		perror("fail to send data length");
+	}
+
+	if (sock->send(data.data(),data.length()) < 0)
+	{
+		perror("fail to send data");
+	}
+}
+
+/*
+ * Requests to display connected users
+ */
+bool TCPMessengerClient::printConnectedUsers()
+{
+	if(statusDetails.loggedIn == true)
+	{
+		this->sendComand(client , PRINT_USER_CONNECTED);
+		return true;
+	}
+	else
+	{
+		cout<<"!!!You must log in!!!"<<endl;
+	}
+	return false;
+}
+
+/*
+ * Extracts port from string
+ */
+string TCPMessengerClient::splitFirst(string all)
+{
+	string first = all.substr(all.find(":") + 1 , all.length());
+	string p = first;
+	return  p;
+}
+
+/*
+ * Returns user name
+ */
+string TCPMessengerClient::getUsername()
+{
+	return userName;
+}
+
+/*
+ * Extracts address from string
+ */
+string TCPMessengerClient::splitSecond(string all)
+{
+	string second = all.substr(0,all.find(":"));
+
+	return second;
+}
+
+/*
+ * Creates a new chat room
+ */
+void TCPMessengerClient::createChatroom(string room_name)
+{
+	if(statusDetails.loggedIn == true)
+	{
+		if(statusDetails.session.compare("OUT") == 0)
+		{
+			this->sendComand(client ,CREATE_CHAT_ROOM);
+			this->sendData(client , room_name);
+		}
+		else
+		{
+			cout<< "!!!You can't create a room because you are in a session!!!"<<endl;
+		}
+
+	}
+	else
+	{
+		cout<<"!!!You must login!!!"<<endl;
+	}
+}
+
+/*
+ * Updates users list
+ */
+void TCPMessengerClient::updateUserList(map<string,string>m)
+{
+	for(map <string, string  >:: iterator it = m.begin(); it != m.end(); it++)
+	{
+		multiThreadLocker->lock();
+		nameToSocket.insert(pair<string , string> (it->first , it->second));
+		multiThreadLocker->unlock();
+	}
+}
+
+/*
+ * Searches user name in user's map
+ */
+string TCPMessengerClient::searchByName(string name)
+
+{
+	for(map <string, string  >:: iterator it = nameToSocket.begin(); it != nameToSocket.end(); it++)
+	{
+		if (name.compare(it->first) == 0)
+		{
+			return it->second;
+		}
+	}
+	cout<<"wrong input"<<endl;
+	return "127.0.0.1:6666";
+}
+
+/*
+ * Requests rooms list
+ */
+void TCPMessengerClient::printRooms()
+{
+	if(statusDetails.loggedIn == true)
+		sendComand(client , PRINT_CHAT_ROOM);
+	else
+		cout<<"You must log in "<<endl;
+}
+
+/*
+ * Prints status of some user
+ */
+void TCPMessengerClient::printStatus(TCPSocket * sock)
+{
+
+	cout<<"Details: "<<endl;
+	cout<<"User's session status: "<<this->readData(sock)<<endl;
+	cout<<"User's chat room status: "<<this->readData(sock)<<endl;
+}
+
+/*
+ * Prints status of current client
+ */
+void TCPMessengerClient::getMystatus()
+{
+	if(statusDetails.loggedIn==true)
+	{
+	cout<<"Details: "<<endl;
+	cout<<"User's session status: "<<this->statusDetails.session<<endl;
+	cout<<"User's chat room status: "<<this->statusDetails.chatRoom<<endl;
+	cout<<"User's session with partner status: "<<this->statusDetails.withUser<<endl;
+	}
+	else
+	{
+		cout<<"!!!You must first login!!!"<<endl;
+	}
+
+}
+
+/*
+ * Receives status from server
+ */
+void TCPMessengerClient::getStatus(string userName)
+{
+	if(statusDetails.loggedIn==true)
+	{
+		this->sendComand(client , GET_STATUS);
+		this->sendData(client , userName);
+	}
+	else
+		cout<<"!!!You must log in!!!"<<endl;
+}
+
+
+TCPMessengerClient::~TCPMessengerClient()
+{
+}

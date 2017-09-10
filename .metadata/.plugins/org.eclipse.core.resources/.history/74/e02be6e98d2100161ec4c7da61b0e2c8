@@ -1,0 +1,67 @@
+/*
+ * User.cpp
+ *
+ *  Created on: Jun 9, 2013
+ *      Author: user
+ */
+#ifndef USER_CPP_
+#define USER_CPP_
+
+#include "User.h"
+#include "TCPSocket.h"
+
+using namespace std;
+
+// constructor user
+User::User(string userName  , TCPSocket* p) : TCPSocket(p)
+{
+	name=userName;
+	session="OUT";
+	chat_room="NONE";
+}
+
+// get user name
+string User::getName()
+{
+	return name;
+}
+
+// get session status
+string User::getStatus()
+{
+	return session;
+}
+
+// distructor of user
+User::~User() {
+
+}
+
+// set OUT in session status
+void User::eraseSessionStatus()
+{
+	this->session = "OUT";
+}
+
+// set chat room name in chat room status
+void User::setRoom(string room)
+{
+	chat_room = room;
+}
+
+// get status of chat room
+string User::getRoom()
+{
+	return this->chat_room;
+}
+
+// set IN in session status
+void User::setSessionStatus()
+{
+	this->session="IN";
+}
+
+
+
+#endif /* USER_H_ */
+

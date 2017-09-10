@@ -1,0 +1,90 @@
+#ifndef MESSENGERSERVER_H_
+#define MESSENGERSERVER_H_
+
+
+#include <strings.h>
+#include <string.h>
+#include <map>
+#include <vector>
+#include "MThread.h"
+#include "TCPSocket.h"
+#include "MultipleTCPSocketsListener.h"
+#include "TCPMessengerProtocol.h"
+#include "LoginAndRegister.h"
+#include "MultiThreadLocker.h"
+
+
+using namespace std;
+
+
+
+
+class TCPMessengerServer : MThread
+{
+	friend class User;
+	TCPSocket * serverSocket;
+	bool runningNormally;
+	LoginAndRegister* login;
+	MultiThreadLocker* multiThreadLocker;
+
+public:
+
+	TCPMessengerServer();
+
+	void run();
+
+	/*
+	 * Sends command through socket
+	 */
+	static void sendComand(TCPSocket* sock, int command);
+
+	/*
+	 * Reads command from socket
+	 */
+    static int readComand(TCPSocket* sock);
+
+    /*
+     * Sends data through socket
+     */
+    static void sendData(TCPSocket* sock, string data);
+
+    /*
+     * Reads data from socket
+     */
+    static string readData(TCPSocket* sock);
+
+    /*
+     * Returns login
+     */
+    LoginAndRegister * getLogin();
+
+    /*
+     * Sends length of the message through socket
+     */
+    static void sendLength(TCPSocket* sock, int Length);
+
+    /*
+     * Converts between map and vector
+     */
+    vector<TCPSocket*>  MapToVector(map<string,TCPSocket *> *mapi);
+
+    /*
+     * Returns ready peer
+     */
+    static TCPSocket* MapToReady(map<string , User >* mapi);
+
+    /*
+     * Returns ready socket
+     */
+    static TCPSocket* MapToReadyConnected(map<string ,TCPSocket *>* mapi);
+    //string findBySocket (TCPSocket * s);
+    //map<string, TCPSocket*>* getBusy();
+   // map<string, TCPSocket*>* getOpened();
+
+    /*
+     * Closes server
+     */
+	void close();
+};
+
+#endif

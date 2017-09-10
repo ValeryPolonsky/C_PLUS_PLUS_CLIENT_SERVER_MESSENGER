@@ -1,0 +1,90 @@
+//============================================================================
+// Name        : TCP Messenger Server
+// Author      : Eliav Menachi
+// Version     :
+// Copyright   :
+// Description : TCP Messenger application
+//============================================================================
+#include <strings.h>
+#include <map>
+#include "string.h"
+#include <vector>
+#include "MThread.h"
+#include "TCPSocket.h"
+#include "TCPMessengerProtocol.h"
+#include "MultipleTCPSocketsListener.h"
+#include "UdpMessenger.h"
+#include <sstream>
+#include <string>
+#include <stdlib.h>
+#include "MultiThreadLocker.h"
+using namespace std;
+
+
+class TCPMessengerClient : MThread
+{
+	string userName;
+	TCPSocket* client;
+	bool runningSession;
+	bool runningNormaly;
+	UDPMessenger* udpMessenger;
+	typedef map<string, string> NameToSocket;
+	NameToSocket nameToSocket;
+	sessionDetails statusDetails;
+	MultiThreadLocker* multiThreadLocker;
+
+public:
+	TCPMessengerClient();
+	~TCPMessengerClient();
+	bool connect(string ip);
+	bool isConnected();
+	bool disconnect();
+	bool open(string userName);
+	bool isActiveClientSession();
+	bool closeActiveSessionWithPeer();
+	bool send(string msg);
+	bool signup(string userToSignUp , string pass);
+	bool login(string userToLogin , string pass);
+	string readData(TCPSocket* sock);
+	void sendData(TCPSocket* sock, string data);
+	void sendComand(TCPSocket* sock, int command);
+	int readComand(TCPSocket* sock);
+	bool printListOfUsers();
+	string getUsername();
+	int readLength(TCPSocket* sock);
+	void readFromSocket(int length , TCPSocket * p );
+	bool printConnectedUsers();
+	void updateUserList(map<string,string>m);
+	void openSessionWithChatRoom(string chatRoom);
+    void addUsersToUsersMap(TCPSocket * sock ,int length);
+	int  splitPort(string all);
+	string splitFirst(string all);
+	string splitSecond(string all);
+	string searchByName(string name);
+	void getUserFromRoom(string room);
+	void createChatroom(string room_name);
+	bool checkErrorStatus(string str , string error);
+	bool exitFromRoom();
+	void getStatus(string userName);
+	void printStatus(TCPSocket * sock);
+    void closeRoom(string room_name);
+    void deleteAllusersInSession();
+	void getMystatus();
+	void printRooms();
+	void run();
+	void printMap();
+	//case methods
+	void closeSessionWithPeerResponse();
+	void eraseMsgResponse();
+	void closeRoomResponse();
+	void exitFromRoomResponse(TCPSocket *cli);
+	void joinSessionWithCrResponse(TCPSocket *cli);
+	void displayChatRoomsResponse(TCPSocket *cli);
+	void openChatRoomResponse(TCPSocket *cli);
+	void createSessionWithPeerResponse(TCPSocket *cli);
+	void displayConnUsersResponse(TCPSocket *cli);
+	void displayUsersListResponse(TCPSocket *cli);
+	void signUpResponse(TCPSocket *cli);
+	void logInResponse(TCPSocket *cli);
+};
+

@@ -1,0 +1,48 @@
+#ifndef LoginAndRegister_H_
+#define LoginAndRegister_H_
+
+#include <strings.h>
+#include <string.h>
+#include <map>
+#include <vector>
+#include "MThread.h"
+#include "TCPSocket.h"
+#include <iostream>
+#include <fstream>
+#include "TCPMessengerProtocol.h"
+#include "Dispatcher.h"
+#include "MultiThreadLocker.h"
+
+using namespace std;
+
+class LoginAndRegister : MThread
+{
+	typedef map <string, TCPSocket*> SocketsMap;
+	SocketsMap openedpeers;
+	bool runningNormally;
+	Dispatcher* dispatcher;
+	MultiThreadLocker* multiThreadLocker;
+	map <string, string> loggedIn;
+
+public:
+	LoginAndRegister();
+	bool isSignedUp(string userName);
+	void addPeer(TCPSocket* p);
+	string signUp(string userName, string pass);
+	void run();
+	string login(string name, string pass ,  TCPSocket * p);
+	static  int linesLength();
+	static void sendUsersFromFile(TCPSocket * p);
+	char* getFirstWordInString(char* strFullString, char* strFirstWord);
+	void printAllUsers();
+	Dispatcher* getDispatcher();
+	bool isloggedInBefore(string user_name);
+	void LogInExecute(TCPSocket * readypeer , int Command);
+	void signUpExecute(TCPSocket * readypeer , int Command);
+	void error(TCPSocket * readypeer , int Command);
+	bool isLogin(string Address , map<string , TCPSocket *> mapi);
+	virtual ~LoginAndRegister();
+};
+
+
+#endif /* LoginAndRegister_H_ */

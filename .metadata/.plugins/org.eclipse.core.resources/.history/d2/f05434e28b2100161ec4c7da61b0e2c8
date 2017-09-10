@@ -1,0 +1,239 @@
+/*
+ * LoginAndRegister.cpp
+ *
+ *  Created on: Jun 4, 2013
+ *      Author: user
+ */
+
+#include "MessengerServer.h"
+#include "Dispatcher.h"
+
+
+using namespace std;
+
+// constructor of login
+LoginAndRegister::LoginAndRegister(){
+
+	multiThreadLocker = new MultiThreadLocker(1);
+	runningNormally = true;
+	dispatcher = new Dispatcher(&openedpeers, &loggedIn);
+	this->start();
+}
+
+// start the thread of login
+void LoginAndRegister::run()
+{
+	runningNormally = true;
+	while (runningNormally)
+	{
+		TCPSocket * readypeer = MessengerServer::MapToReadyConnected(&openedpeers);
+		int Command = MessengerServer::readComand(readypeer);
+		switch (Command)
+		{
+		case LOG_IN:
+		{
+			LogInExecute(readypeer , Command);
+			break;
+		}
+		case SIGN_UP:{
+
+			signUpExecute(readypeer , Command);
+			break;
+		}
+		case LOGIN_ERASE:
+		{
+			error(readypeer , Command);
+			break;
+		}
+		}
+	}
+}
+
+// error condition
+void LoginAndRegister::error(TCPSocket * readypeer , int Command)
+{
+	multiThreadLocker->lock();
+	openedpeers.erase(readypeer->destIpAndPort());
+	multiThreadLocker->unlock();
+	cout<<"disconnected: "<<readypeer->destIpAndPort()<<endl;
+}
+
+// sign up in run
+void LoginAndRegister::signUpExecute(TCPSocket * readypeer , int Command)
+{
+	string name = MessengerServer::readData(readypeer);
+	string pass = MessengerServer::readData(readypeer);
+	string str = signUp(name , pass);
+	MessengerServer::sendComand(readypeer, Command);
+	MessengerServer::sendData(readypeer, str);
+}
+
+// login in run
+void LoginAndRegister::LogInExecute(TCPSocket * readypeer , int Command)
+{
+	string name = MessengerServer::readData(readypeer);
+	string pass = MessengerServer::readData(readypeer);
+	if(isloggedInBefore(name)==true) { MessengerServer::sendComand(readypeer , USER_IS_EXIST); return ;}
+	string str = login(name, pass , readypeer);
+	if(str.compare("false")==0) { MessengerServer::sendComand(readypeer ,LOGIN_NOT_SUCCESS); return;}
+	MessengerServer::sendComand(readypeer, Command);
+	MessengerServer::sendData(readypeer, str);
+	MessengerServer::sendData(readypeer , readypeer->destIpAndPort());
+
+}
+
+
+//if is  sign up -->return true else return false
+bool LoginAndRegister::isSignedUp(string userName)
+{
+	string line;
+	ifstream myReadFile("users.txt");
+	if (myReadFile.is_open())
+	{
+		while (myReadFile.good())
+		{
+			getline(myReadFile, line);
+			if (line.compare(userName)==0)
+			{
+				return true;
+			}
+		}
+	}
+	myReadFile.close();
+	return false;
+}
+
+// get pointer of dispatcher
+Dispatcher * LoginAndRegister::getDispatcher()
+{
+	return dispatcher;
+}
+
+// send all users are signed up
+void LoginAndRegister::sendUsersFromFile(TCPSocket * p)
+{
+	string line;
+	ifstream myReadFile("users.txt");
+	if (myReadFile.is_open())
+	{
+		while (myReadFile.good())
+		{
+			getline(myReadFile, line);
+			string delimiter = " ";
+			string username = line.substr(0,line.find(delimiter));
+			string password = line.substr(line.find(delimiter)+1,line.length());
+			MessengerServer::sendData(p , username);
+		}
+	}
+	myReadFile.close();
+}
+
+// display all users (server function)
+void LoginAndRegister::printAllUsers()
+{
+	string line;
+	ifstream myReadFile("users.txt");
+	if (myReadFile.is_open())
+	{
+		cout<<"The users Are:"<<endl;
+		while (myReadFile.good())
+		{
+			getline(myReadFile, line);
+			string delimiter = " ";
+			string username = line.substr(0,line.find(delimiter));
+			string password = line.substr(line.find(delimiter)+1,line.length());
+			cout<<username<<endl;
+		}
+	}
+	myReadFile.close();
+
+}
+
+// sign up
+string LoginAndRegister::signUp(string userName , string pass)
+{
+	if (this->isSignedUp(userName +" "+pass) == false)
+	{
+		ofstream myfile;
+		myfile.open ("users.txt", std::ios_base::app);
+		myfile << userName << " "<<pass<<endl;
+		myfile.close();
+		return "Signed Up";
+	}
+	else
+	{
+		return "You are exist";
+	}
+}
+
+// login
+string LoginAndRegister::login(string name, string pass , TCPSocket * p)
+{
+	if ((this->isSignedUp(name+" "+pass)==false))
+	{
+		return "false";
+	}
+
+	multiThreadLocker->lock();
+	openedpeers.erase(p->destIpAndPort());
+	multiThreadLocker->unlock();
+
+	multiThreadLocker->lock();
+	loggedIn.insert(pair<string, string>(name, p->destIpAndPort()));
+	multiThreadLocker->unlock();
+
+	dispatcher->addUser(name, p);
+
+	return "You Logged in";
+}
+
+// add peer (go to dispatcher)
+void LoginAndRegister::addPeer ( TCPSocket * p)
+{
+	openedpeers.insert(pair<string, TCPSocket*>(p->destIpAndPort(), p));
+}
+
+// get length of lines
+int LoginAndRegister::linesLength()
+{
+	int numLines = 0;
+	ifstream in("users.txt");
+	string unused;
+	while (getline(in, unused))
+	{
+		numLines++;
+	}
+
+	in.close();
+	return numLines;
+}
+
+// check if address is in map of login
+bool LoginAndRegister::isLogin(string Address, map<string, TCPSocket*> mapi)
+{
+	for(map<string, TCPSocket*>::iterator it = mapi.begin(); it != mapi.end(); it++)
+	{
+		if(it->first.compare(Address) == 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+// is logged in
+bool LoginAndRegister::isloggedInBefore(string user_name)
+{
+	for(map<string, string>::iterator it = loggedIn.begin(); it != loggedIn.end(); it++)
+	{
+		if(user_name.compare(it->first)==0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+LoginAndRegister::~LoginAndRegister()
+{
+}

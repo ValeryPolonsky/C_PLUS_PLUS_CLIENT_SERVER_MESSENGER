@@ -1,0 +1,58 @@
+//============================================================================
+// Name        : TCP Messenger Server
+// Author      : Eliav Menachi
+// Version     :
+// Copyright   :
+// Description : TCP Messenger application
+//============================================================================
+#ifndef MESSENGERSERVER_H_
+#define MESSENGERSERVER_H_
+
+
+#include <strings.h>
+#include <string.h>
+#include <map>
+#include <vector>
+#include "MThread.h"
+#include "TCPSocket.h"
+#include "MultipleTCPSocketsListener.h"
+#include "TCPMessengerProtocol.h"
+#include "LoginAndRegister.h"
+#include "MultiThreadLocker.h"
+
+
+using namespace std;
+
+
+
+
+class MessengerServer : MThread
+{
+	friend class User;
+	TCPSocket * serverSocket;
+	bool runningNormally;
+	LoginAndRegister* login;
+	MultiThreadLocker* multiThreadLocker;
+
+public:
+
+	MessengerServer();
+
+	void run();
+
+	static void sendComand(TCPSocket* sock, int command);
+    static int readComand(TCPSocket* sock);
+    static void sendData(TCPSocket* sock, string data);
+    static string readData(TCPSocket* sock);
+    LoginAndRegister * getLogin();
+    static void sendLength(TCPSocket* sock, int Length);
+    vector<TCPSocket*>  MapToVector(map<string,TCPSocket *> *mapi);
+    static TCPSocket* MapToReady(map<string , User >* mapi);
+    static TCPSocket* MapToReadyConnected(map<string ,TCPSocket *>* mapi);
+    string findBySocket (TCPSocket * s);
+    map<string, TCPSocket*>* getBusy();
+    map<string, TCPSocket*>* getOpened();
+	void close();
+};
+
+#endif

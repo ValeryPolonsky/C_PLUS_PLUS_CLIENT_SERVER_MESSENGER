@@ -1,0 +1,22 @@
+18:20:56 **** Build of configuration Debug for project Test ****
+make all 
+Building file: ../src/TestMessengerClient.cpp
+Invoking: GCC C++ Compiler
+g++ -I"/home/user/Desktop/Final_Project_14/SocketUtils/MessengerClientLib" -I"/home/user/Desktop/Final_Project_14/SocketUtils/MessengerServerLib" -I"/home/user/Desktop/Final_Project_14/SocketUtils/SharedLib" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"src/TestMessengerClient.d" -MT"src/TestMessengerClient.d" -o "src/TestMessengerClient.o" "../src/TestMessengerClient.cpp"
+Finished building: ../src/TestMessengerClient.cpp
+ 
+Building file: ../src/main.cpp
+Invoking: GCC C++ Compiler
+g++ -I"/home/user/Desktop/Final_Project_14/SocketUtils/MessengerClientLib" -I"/home/user/Desktop/Final_Project_14/SocketUtils/MessengerServerLib" -I"/home/user/Desktop/Final_Project_14/SocketUtils/SharedLib" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"src/main.d" -MT"src/main.d" -o "src/main.o" "../src/main.cpp"
+../src/main.cpp: In function ‘int main()’:
+../src/main.cpp:20:22: warning: unused variable ‘msngrServer’ [-Wunused-variable]
+Finished building: ../src/main.cpp
+ 
+Building target: Test
+Invoking: GCC C++ Linker
+g++ -L"/home/user/Desktop/Final_Project_14/SocketUtils/Debug" -o "Test"  ./src/TestMessengerClient.o ./src/main.o   -lpthread -lSocketUtils
+Finished building target: Test
+ 
+18:21:00 **** Incremental Build of configuration Debug for project Test ****
+make all 
+make: Nothing to be done for `all'.

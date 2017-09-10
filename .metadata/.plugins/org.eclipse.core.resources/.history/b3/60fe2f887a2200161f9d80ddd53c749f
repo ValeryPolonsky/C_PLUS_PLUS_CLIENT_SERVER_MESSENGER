@@ -1,0 +1,23 @@
+/*
+ * TestMessengerServer.cpp
+ *
+ *  Created on: May 25, 2016
+ *      Author: user
+ */
+
+#include "TestMessengerServer.h"
+
+TestMessengerServer::TestMessengerServer() {
+	// TODO Auto-generated constructor stub
+
+}
+
+TestMessengerServer::~TestMessengerServer() {
+	// TODO Auto-generated destructor stub
+}
+
+TestMessengerServer::test()
+{
+	MessengerServer* msngrServer = new MessengerServer();
+}
+
